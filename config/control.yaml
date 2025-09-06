@@ -1,0 +1,15 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+admittance_controller:
+  ros__parameters:
+    type: admittance_controller/AdmittanceController
+    joints: [joint1, joint2, joint3, joint4, joint5, joint6]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    mass:      [1.0,1.0,1.0,1.0,1.0,1.0]
+    damping:   [20.0,20.0,20.0,20.0,20.0,20.0]
+    stiffness: [10.0,10.0,10.0,10.0,10.0,10.0]
+    wrench_topic: "/external_wrench"
+EOF

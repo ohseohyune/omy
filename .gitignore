@@ -1,0 +1,14 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.swp
+*.log
+
+# ROS2 build artifacts
+build/
+install/
+log/
+
+# Other
+*.egg-info/
