@@ -2,7 +2,7 @@
 
 import time
 from . import config as C
-from .mujoco_test import MujocoTest
+#from .mujoco_test import MujocoTest
 
 from .io_dxl import DxlIO
 from .model_pin import GravityModel
@@ -41,7 +41,7 @@ def main():
     kt_estimates = [C.TORQUE_CONSTANT_KT] * len(C.MOTOR_IDS)
     t_prev = time.perf_counter() # 프로그램이 실행된 이후 경과된 시간을 초 단위(float) 로 반환합니다.
     loop_counter = 0
-    print_interval = int(3.0 / C.CONTROL_PERIOD)  # 5초 주기 로그 출력용
+    #print_interval = int(3.0 / C.CONTROL_PERIOD)  # 5초 주기 로그 출력용
 
 
     try:
@@ -79,7 +79,7 @@ def main():
             #dxl.step(nstep)            
 
             # 6) Print Kt summary
-            print_kt_summary(est, print_interval, loop_counter)
+            #print_kt_summary(est, print_interval, loop_counter)
 
             loop_counter += 1
 
