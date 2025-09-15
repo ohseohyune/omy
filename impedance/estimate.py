@@ -18,23 +18,35 @@ class KtEstimator:
         self.window_size = window_size # 추정에 사용할 샘플 개수 
         self.kt_buffers = {i: [] for i in range(len(C.MOTOR_IDS))} # 각 관절별로 추정된 Kt 값을 저장할 버퍼 
 
-    def update_online(self, tau_gravity: List[float], currents_measured_A: List[float], currents_impedance_01A: List[float]) -> List[Optional[float]]:
+    def update_online(self, tau_gravity: List[float], currents_measured_A: List[float], currents_impedance_raw: List[float]) -> List[Optional[float]]:
         
         """
         [ input ]
+
           tau_gravity : Pinocchio에서 계산한 중력 토크 [Nm]
           currents_measured_A : 실제 모터에서 읽어온 전류 [A]
           currents_impedance_01A : 임피던스 제어 전류[0.01A 단위]
+          ====
+          def update_kt_estimator(estimator, dxl, tau_gravity, current_imp_01A):
+    
+          Update Kt estimator with new sensor data.
+    
+          measured_currents_A = dxl.read_currents_A()
+          estimator.update_online(tau_gravity, measured_currents_A, current_imp_01A)
         
         """
         
         kt_estimates = []
+
         for i in range(len(C.MOTOR_IDS)):
-            imp_current_A = currents_impedance_01A[i] * 0.01  # [A]로 변환
-            gravity_current_A = currents_measured_A[i] - imp_current_A # 실제 측정된 전류에서 임피던스 제어 전류를 빼서 중력보상 전류만 추출 
+            imp_current_A = currents_impedance_raw[i] * 0.01  # [A]로 변환
+            gravity_current_A = currents_measured_A[i] - imp_current_A # 실제 측정된 전류에서 임피던스 제어 전류를 빼서 중력보상 전류만 추출 [Q] 나중에는 경로에 의한 토크도 빼줘야 할듯 
             
+           
+
             # 임계치: 100 mA, 0.01 Nm 이상일 때만 업데이트
-            if abs(gravity_current_A) > 0.1 and abs(tau_gravity[i]) > 0.01:
+            if abs(gravity_current_A) > 0.1 and abs(tau_gravity[i]) > 0.01: 
+                """무조코 시뮬레이터에서 임계값 줄이기"""
                 kt = abs(tau_gravity[i]) / (abs(gravity_current_A) * C.MOTOR_GEAR_RATIO * C.MECH_EFFICIENCY)
             else:
                 kt = None
@@ -47,7 +59,8 @@ class KtEstimator:
                 if len(self.kt_buffers[i]) > self.window_size:
                     self.kt_buffers[i].pop(0) 
             kt_estimates.append(kt)
-        return kt_estimates
+            
+        return kt_estimates # 각 관절마다 상이한 Kt 리스트 반환 
   
     def summary(self) -> Dict[int, dict]: 
         """

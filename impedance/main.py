@@ -2,6 +2,7 @@
 
 import time
 from . import config as C
+from .mujoco_test import MujocoTest
 
 from .io_dxl import DxlIO
 from .model_pin import GravityModel
@@ -23,21 +24,25 @@ def main():
     3) GroupSyncRead와 GroupSyncWrite 객체 생성 및 ID 등록
 
     """
-    # === Initialize modules ===
-    dxl = DxlIO()                   
-    pin = GravityModel()            # Pinocchio 기반 중력 보상 모델
+    # === Initialize modules / 객체들 ===
+    dxl =  DxlIO() #MujocoTest() #               
+    pin = GravityModel()            # Pinocchio 기반 중력 보상 모델(URDF 모델이 있나 check , 없으면 MJCF => URDF)
     ctrl = ImpedanceController()    # 임피던스 제어기
     est  = KtEstimator()            # Kt 토크상수 온라인 추정기
 
     # === Set initial targets to avoid sudden jumps ===
     q_init, dq_init = dxl.read_q_dq()
-    ctrl.init_targets(q_init, dq_init)
+    ctrl.init_targets(q_init, dq_init) # 현재 위치와 속도를 desired로 만들어줌
 
     print("▶ Start OMY Impedance Control (+gravity, Kt online). Press Ctrl+C to stop.")
 
-    t_prev = time.perf_counter()
+    #nstep = 4 # for mujoco
+
+    kt_estimates = [C.TORQUE_CONSTANT_KT] * len(C.MOTOR_IDS)
+    t_prev = time.perf_counter() # 프로그램이 실행된 이후 경과된 시간을 초 단위(float) 로 반환합니다.
     loop_counter = 0
-    print_interval = int(30.0 / C.CONTROL_PERIOD)  # 30초 주기 출력용
+    print_interval = int(3.0 / C.CONTROL_PERIOD)  # 5초 주기 로그 출력용
+
 
     try:
         while True:
@@ -48,23 +53,33 @@ def main():
             joint_positions, joint_velocities = dxl.read_q_dq()
 
             # === 2) Gravity torque (from model) ===
-            tau_gravity = pin.tau_g(joint_positions)
+            tau_gravity = pin.gravity_comp_torque(joint_positions)   
+
+            if loop_counter % 250 == 0:
+                print(f"\ntau_gravity : {tau_gravity}")         
 
             # === 3) Impedance + Gravity compensation → Current commands ===
-            current_cmd_01A, current_imp_01A = ctrl.step(
-                joint_positions, joint_velocities, tau_gravity
+            current_cmd_raw, current_imp_raw = ctrl.compute_impedance_with_gravity(
+                joint_positions, joint_velocities, tau_gravity, kt_estimates
             )
-
-            # === 4) Send current commands ===
-            dxl.send_goal_currents(current_cmd_01A)
 
             # 5) Update Kt estimator every 10 loops
             if loop_counter % 10 == 0:
-                update_kt_estimator(est, dxl, tau_gravity, current_imp_01A)
+                kt_estimates = update_kt_estimator(est, dxl, tau_gravity, current_imp_raw)
 
-            # 6) Print Kt summary every 30 seconds
+            # === 4) Send current commands ===
+            dxl.send_goal_currents(current_cmd_raw)
+            
+            #if loop_counter % 250 == 0: #1초마다 출력 
+            #    print(f"\ncur_cmd_raw :{current_cmd_raw} ")
+            #    print(f"cur_imp_raw : {current_imp_raw}")
+
+            # MuJoCo 한 주기 진행 (CONTROL_PERIOD 동안 시뮬레이션 시간 흘리기) / for mujoco
+            #nstep = max(1, int(round(C.CONTROL_PERIOD / dxl.model.opt.timestep)))
+            #dxl.step(nstep)            
+
+            # 6) Print Kt summary
             print_kt_summary(est, print_interval, loop_counter)
-
 
             loop_counter += 1
 
