@@ -23,7 +23,7 @@ class GravityModel:
         if xml_exists and not urdf_exists:
             print(f"[PIN] Converting MJCF → URDF: {C.XML_PATH} → {C.URDF_PATH}")
             #convert(C.XML_PATH, C.URDF_PATH)  
-            urdf_exists = C.URDF_PATH and os.path.exists(C.URDF_PATH)
+            #urdf_exists = C.URDF_PATH and os.path.exists(C.URDF_PATH)
 
         if urdf_exists:
             print(f"[PIN] Loading URDF: {C.URDF_PATH}")
