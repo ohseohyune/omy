@@ -2,7 +2,7 @@
 from typing import List, Tuple, Optional
 import numpy as np
 from . import config as C # . : 현재 디렉토리 
-from model_pin import GravityModel
+from .model_pin import GravityModel
 
 class ImpedanceController:
     """ 
